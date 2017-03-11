@@ -9,11 +9,17 @@ Run `python mds_test.py path_to_graph mode`.
 Example: `python mds_test.py graphs/g1 sammon`.
 
 Graph should be represented by a text file. First line contains one integer `n` (number of vertices), 
-`(i+1)`th line contains neighbors of a vertex `i`. Vertices are numered from `1` to `n`. 
+`(i+1)`th line contains size and neighbors of a vertex `i`. First integer in a line represents size, the rest are neighbors. Vertices are numered from `1` to `n`. 
 Examples are in the `graphs` folder. DO NOT put a new line at the end of the file, it will be interpreted as a vertex with no neighbors.
 
 Script produces a text file with vertex embeddings and a plot, both are saved in `path_to_graph` directory. Dotted lines represent Voronoi borders. 
-"Bad edges" is the number of edges in the graph that cross an area they don't belong to.
+"Bad edges" is the number of edges in the graph that cross an area they don't belong to. It shows incorrect number for graphs with different node sizes at the moment, so ignore it for now.
+
+I couldn't get rid of very large zones forming near the edges of a map. For now, I greyed out the points that are further than 0.5 from the nearest embedding point. This is probably not the best solution in the long run.
+
+# Transforming a graph
+
+Let's say we have two connected vertices, `v` and `u` with sizes 3 and 8, respectively. I tried to just weight the edge `u-v` in a few different ways, but it didn't work very well. I ended up splitting each vertex `x` into `size(x)` vertices (`v` becomes `v_1`, `v_2`, `v_3`, for example). I chose to make those into a cycle (`v_1-v_2`, `v_2-v_3`, `v_3-v_1`). Clique gave bad results, the embeddins were too close to each other. Then I have to connect `v` and `u` in the transformed graph. I tried connecting each `v_i` with each `u_j`, it looked bad for big nodes. I found better way: connect one random `v_i` with one random `u_j`. The script uses this method.
 
 
 
