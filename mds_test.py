@@ -1,16 +1,21 @@
 import numpy as np
-from sklearn.manifold import MDS
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import scale
 import sys
 
-from sammon import sammon
+from sklearn.preprocessing import scale
+from sklearn.manifold import MDS
 from scipy.spatial import Voronoi, voronoi_plot_2d
+from heapq import heappop, heappush
+from scipy.spatial.distance import cdist
+from collections import defaultdict as dd
+
+from sammon import sammon
 
 
 def load_graph(path):
     n = None
     graph = {}
+    sizes = []
     with open(path, 'r') as f:
         it = 0
         for line in f:
@@ -18,84 +23,145 @@ def load_graph(path):
             if n is None:
                 n = nums[0]
             else:
-                graph[it] = nums
+                sizes.append(nums[0])
+                graph[it] = nums[1:]
             it += 1
         assert n + 1 == it
-    return n, graph
+    return graph, sizes
 
 
-def calc_weights(n, graph):
-    ws = np.zeros((n, n))
+def same_vert(a,b):
+        return a.split('_')[0] == b.split('_')[0]
+    
+    
+def vert_numbers(a):
+    return map(int, a.split('_'))
+    
+    
+def reshape_graph(graph, sizes):
+    
+    def vert(a,b):
+        return str(a) + '_' + str(b)
+    
+    n = len(sizes)
+    new_graph = {}
     for v in xrange(1, n+1):
-        for u in xrange(1, n+1):
-            ws[u-1,v-1] = len(set(graph[u]).union(graph[v])) - len(set(graph[u]).intersection(graph[v]))
+        for k in xrange(1, sizes[v-1]+1):
+            new_graph[vert(v,k)] = []
+            
+    for v in xrange(1, n+1):
+        for u in graph[v]:
+            if u > v:
+                v_ = vert(v, np.random.choice(xrange(1, sizes[v-1]+1)))
+                u_ = vert(u, np.random.choice(xrange(1, sizes[u-1]+1)))
+                new_graph[v_].append(u_)
+                new_graph[u_].append(v_)
+
+    
+    for v in xrange(1, n+1):
+        if sizes[v-1] > 1:
+            for k in xrange(1, sizes[v-1]+1):
+                u1, u2 = vert(v,k), vert(v,(k % sizes[v-1])+1)
+                new_graph[u1].append(u2)
+                new_graph[u2].append(u1)
+            
+    return new_graph
+
+
+def squeeze(data, xlim=(0,1), ylim=(0,1)):
+    mi = min(data.ravel())
+    ma = max(data.ravel()) - mi
+    new_data = (data - mi) / ma
+    new_data[:,0] = new_data[:,0] * (xlim[1]-xlim[0]) + xlim[0]
+    new_data[:,1] = new_data[:,1] * (ylim[1]-ylim[0]) + ylim[0]
+    return new_data
+
+
+def make_index(graph):
+    temp = zip(xrange(len(graph.keys())), sorted(graph.keys()))
+    return dict(temp), {v:k for (k,v) in temp}
+
+
+def calc_weights(graph, sizes):
+    ws = {}
+    for v in graph.keys():
+        for u in graph.keys():
+            if v != u:
+                ws[(u,v)] = len(set(graph[u]).union(graph[v])) - \
+                len(set(graph[u]).intersection(graph[v]))
+#                 un, vn = vert_numbers(u)[0], vert_numbers(v)[0]
+#                 ws[(u,v)] *= np.sqrt((sizes[un-1] + sizes[vn-1]) / 2)
     return ws
 
 
-def dijksta(n, graph, weights, v1, v2):
-    Q = set()
-    dists = np.zeros(n)
-    prev = np.zeros(n)
-    for v in xrange(n):
-        dists[v] = np.inf
-        prev[v] = np.nan
-        Q.add(v+1)
-        
-    dists[v1-1] = 0
+def dijksta(graph, weights, v1, v2):
+    Q, seen = [(0, v1)], set()
+    
     while Q:
-        u = min([(dists[x-1], x) for x in Q])[1]
-        Q.remove(u)
-        for v in graph[u]:
-            d = weights[u-1,v-1]
-            alt = dists[u-1] + d
-            if alt < dists[v-1]:
-                dists[v-1] = alt
-                prev[v-1] = u
-    return dists[v2-1]
+        w, v = heappop(Q)
+        if v not in seen:
+            seen.add(v)
+            if v == v2:
+                return w
+            
+            for u in graph[v]:
+                if u not in seen:
+                    heappush(Q, (w + weights[(v,u)], u))
+                    
+    return float('inf')
 
 
-def calc_dists(n, graph, weights):
+def calc_dists(graph, weights, idx):
+    n = len(graph.keys())
     dists = np.zeros((n, n))
     for i in xrange(n):
         for j in xrange(i+1,n):
-            d = dijksta(n, graph, weights, i+1, j+1)
+            d = dijksta(graph, weights, idx[i], idx[j])
             dists[i,j] = d
     return dists + dists.T
 
 
-def plot_a_thing(data_trans, graph, figname=None, to_file=True):
+def plot_a_thing(data_trans, graph, inds, figname=None, to_file=True, 
+                 xlim=(-2,2), ylim=(-2,2), threshold=.5):
     assert not to_file or figname
+    
     vor = Voronoi(data_trans)
 
     reds = 0
     plt.figure(figsize=(10,10))
-    plt.scatter(data_trans[:,0], data_trans[:,1], linewidths=.2, s=50)
-    for i in xrange(n):
-        plt.text(data_trans[i][0], data_trans[i][1], str(i+1), color="red", fontsize=12)
-        for j in graph[i+1]:
-            if np.where(np.all(np.array([i,j-1]) == vor.ridge_points, axis=1))[0].shape == (0,) and \
-               np.where(np.all(np.array([j-1,i]) == vor.ridge_points, axis=1))[0].shape == (0,):
-                plt.plot((data_trans[i][0], data_trans[j-1][0]),
-                         (data_trans[i][1], data_trans[j-1][1]), 'r-')
-                reds += 1
-            else:
-                plt.plot((data_trans[i][0], data_trans[j-1][0]),
-                         (data_trans[i][1], data_trans[j-1][1]), 'g-')
+    plt.scatter(data_trans[:,0], data_trans[:,1], linewidths=.2, s=10)
+    for i in xrange(data_trans.shape[0]):
+        plt.text(data_trans[i][0], data_trans[i][1], inds[0][i], color="red", fontsize=8)
+        for k in graph[inds[0][i]]:
+            j = inds[1][k]
+            if i < j or same_vert(k, inds[0][i]):
+                if np.where(np.all(np.array([i,j]) == vor.ridge_points, axis=1))[0].shape == (0,) and \
+                   np.where(np.all(np.array([j,i]) == vor.ridge_points, axis=1))[0].shape == (0,) and \
+                    not same_vert(inds[0][i], k):
+                    plt.plot((data_trans[i][0], data_trans[j][0]),
+                             (data_trans[i][1], data_trans[j][1]), 'r-')
+                    reds += 1
+                else:
+                    plt.plot((data_trans[i][0], data_trans[j][0]),
+                             (data_trans[i][1], data_trans[j][1]), 'g-')
 
-    plt.xlim(-2,2)
-    plt.ylim(-2,2)
+    plt.xlim(*xlim)
+    plt.ylim(*ylim)
 
     i = 0
-    for simplex in vor.ridge_vertices:
-        simplex = np.asarray(simplex)
+    for simplex_idx in xrange(len(vor.ridge_vertices)):
+        simplex = np.asarray(vor.ridge_vertices[simplex_idx])
         if np.all(simplex >= 0):
-            plt.plot(vor.vertices[simplex,0], vor.vertices[simplex,1], 'k--')
+            a, b = vor.ridge_points[simplex_idx]
+            if not same_vert(inds[0][a], inds[0][b]):
+                plt.plot(vor.vertices[simplex,0], vor.vertices[simplex,1], 'k--')
         i += 1
 
     center = data_trans.mean(axis=0)
-    for pointidx, simplex in zip(vor.ridge_points, vor.ridge_vertices):
-        simplex = np.asarray(simplex)
-        if np.any(simplex < 0):
+    for pointidx, simplex_idx in zip(vor.ridge_points, xrange(len(vor.ridge_vertices))):
+        simplex = np.asarray(vor.ridge_vertices[simplex_idx])
+        a, b = vor.ridge_points[simplex_idx]
+        if np.any(simplex < 0) and not same_vert(inds[0][a], inds[0][b]):
             i = simplex[simplex >= 0][0] # finite end Voronoi vertex
             t = data_trans[pointidx[1]] - data_trans[pointidx[0]] # tangent
             t /= np.linalg.norm(t)
@@ -104,7 +170,16 @@ def plot_a_thing(data_trans, graph, figname=None, to_file=True):
             far_point = vor.vertices[i] + np.sign(np.dot(midpoint - center, norm)) * norm * 100
             plt.plot([vor.vertices[i,0], far_point[0]], [vor.vertices[i,1], far_point[1]], 'k--')
 
-    plt.text(1, 2.1, 'Bad edges: ' + str(reds / 2), color="red", fontsize=20)
+    plt.text(xlim[1]-1, ylim[1]+.1, 'Bad edges: ' + str(reds), color="red", fontsize=20)
+    
+    step = 0.05
+    x = np.arange(xlim[0], xlim[1] + step, step)
+    y = np.arange(ylim[0], ylim[1] + step, step)
+    xx, yy = np.meshgrid(x, y)
+    grid = np.concatenate([xx[:,:,np.newaxis], yy[:,:,np.newaxis]], axis=2).reshape(-1,2)
+    min_grid_dists = cdist(grid, data_trans).min(axis=1)
+    grey_out = grid[np.where(min_grid_dists > threshold)]
+    plt.plot(grey_out[:,0], grey_out[:,1], 'kx')
     
     if to_file:
         plt.savefig(figname)
@@ -121,17 +196,26 @@ if __name__ == '__main__':
     mode = sys.argv[2] if len(sys.argv) > 2 else 'sammon'
     assert mode in ['sammon', 'mds']
     
-    n, graph = load_graph(path)
-    weights = calc_weights(n, graph)
-    dists = calc_dists(n, graph, weights)
+    graph, sizes = load_graph(path)
+    graph = reshape_graph(graph, sizes)
+    inds = make_index(graph)
+    weights = calc_weights(graph, sizes)
+    dists = calc_dists(graph, weights, inds[0])
     
     if mode == 'sammon':
         data_trans = sammon(dists, inputdist='distance', init='random', display=0)[0]
     elif mode == 'mds':
-        mds = MDS(n_components=2, metric=True, dissimilarity='precomputed', n_init=10, max_iter=100000, eps=.00001)
+        mds = MDS(n_components=2, metric=True, dissimilarity='precomputed', 
+                  n_init=10, max_iter=100000, eps=.00001)
         data_trans = mds.fit_transform(dists)
     
-    data_trans = scale(data_trans)
+    xlim=(-2.5,2.5)
+    ylim=(-2.5,2.5)
+    data_trans_scaled = squeeze(data_trans, xlim, ylim)
+    data_trans_scaled = scale(data_trans)
     
-    plot_a_thing(data_trans, graph, figname=path + '_' + mode + '.png')
+    plot_a_thing(data_trans, graph, inds, figname=path + '_' + mode + '.png')
+    plot_a_thing(data_trans_scaled, graph, inds, figname=path + '_' + mode + '.png', 
+                 xlim=xlim, ylim=ylim, threshold=.5)
+    
     save_embedding(data_trans, path + '_' + mode)
