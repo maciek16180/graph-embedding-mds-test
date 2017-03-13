@@ -11,6 +11,9 @@ from collections import defaultdict as dd
 
 from sammon import sammon
 
+from min_bounding_rect import minBoundingRect
+from qhull_2d import qhull2D
+
 
 def load_graph(path):
     n = None
@@ -69,9 +72,15 @@ def reshape_graph(graph, sizes):
 
 
 def squeeze(data, xlim=(0,1), ylim=(0,1)):
-    mi = min(data.ravel())
-    ma = max(data.ravel()) - mi
-    new_data = (data - mi) / ma
+    xmi = min(data[:,0].ravel())
+    xma = max(data[:,0].ravel()) - xmi
+    
+    ymi = min(data[:,1].ravel())
+    yma = max(data[:,1].ravel()) - ymi
+    
+    new_data = data.copy()
+    new_data[:,0] = (new_data[:,0] - xmi) / xma
+    new_data[:,1] = (new_data[:,1] - ymi) / yma
     new_data[:,0] = new_data[:,0] * (xlim[1]-xlim[0]) + xlim[0]
     new_data[:,1] = new_data[:,1] * (ylim[1]-ylim[0]) + ylim[0]
     return new_data
@@ -214,8 +223,15 @@ if __name__ == '__main__':
     data_trans_scaled = squeeze(data_trans, xlim, ylim)
     data_trans_scaled = scale(data_trans)
     
-    plot_a_thing(data_trans, graph, inds, figname=path + '_' + mode + '.png')
+    ch = qhull2D(data_trans_scaled)
+    theta, _, width, height, _, _ = minBoundingRect(ch)
+    R = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+
+    data_trans_scaled = data_trans_scaled.dot(R)
+    data_trans_scaled[:,0] *= height / width
+    data_trans_scaled = squeeze(data_trans_scaled, (xlim[0]+.5, xlim[1]-.5), (ylim[0]+.5, ylim[1]-.5))
+    
     plot_a_thing(data_trans_scaled, graph, inds, figname=path + '_' + mode + '.png', 
                  xlim=xlim, ylim=ylim, threshold=.5)
     
-    save_embedding(data_trans, path + '_' + mode)
+    save_embedding(data_trans_scaled, path + '_' + mode)
