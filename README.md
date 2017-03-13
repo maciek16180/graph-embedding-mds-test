@@ -1,4 +1,5 @@
 `sammon.py` comes from https://github.com/tompollard/sammon
+`min_bounding_rect.py` and `qhull_2d.py` come from https://github.com/dbworth/minimum-area-bounding-rectangle
 
 # Usage
 
@@ -16,6 +17,8 @@ Script produces a text file with vertex embeddings and a plot, both are saved in
 "Bad edges" is the number of edges in the graph that cross an area they don't belong to. It shows incorrect number for graphs with different node sizes at the moment, so ignore it for now.
 
 I couldn't get rid of very large zones forming near the edges of a map. For now, I greyed out the points that are further than 0.5 from the nearest embedding point. This is probably not the best solution in the long run.
+
+UPDATE: The program now rotates and scales the embeddings to make them fill map space better.
 
 # Transforming a graph
 
