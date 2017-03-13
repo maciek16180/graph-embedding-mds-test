@@ -9,8 +9,8 @@ from heapq import heappop, heappush
 from scipy.spatial.distance import cdist
 from collections import defaultdict as dd
 
+sys.path.insert(0, './lib/')
 from sammon import sammon
-
 from min_bounding_rect import minBoundingRect
 from qhull_2d import qhull2D
 
