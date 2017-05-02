@@ -25,7 +25,7 @@ Let's say we have two connected vertices, `v` and `u` with sizes 3 and 8, respec
 
 Points are now pulled towards the map borders. More detailed description (hopefully) soon.
 
-Results with `_pregrav` are saved before pulling for comparison.
+Results with `_pregrav` are saved before pulling, for comparison.
 
 # Sources
 
