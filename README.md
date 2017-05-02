@@ -21,6 +21,10 @@ UPDATE: The program now rotates and scales the embeddings to make them fill map 
 
 Let's say we have two connected vertices, `v` and `u` with sizes 3 and 8, respectively. I tried to just weight the edge `u-v` in a few different ways, but it didn't work very well. I ended up splitting each vertex `x` into `size(x)` vertices (`v` becomes `v_1`, `v_2`, `v_3`, for example). I chose to make those into a cycle (`v_1-v_2`, `v_2-v_3`, `v_3-v_1`). Clique gave bad results, the embeddins were too close to each other. Then I have to connect `v` and `u` in the transformed graph. I tried connecting each `v_i` with each `u_j`, it looked bad for big nodes. I found better way: connect one random `v_i` with one random `u_j`. The script uses this method.
 
+# Gravity pulling
+
+Points are now pulled towards the map borders. More detailed description (hopefully) soon.
+
 # Sources
 
 `sammon.py` comes from https://github.com/tompollard/sammon
