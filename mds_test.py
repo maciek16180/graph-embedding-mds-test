@@ -15,6 +15,34 @@ from min_bounding_rect import minBoundingRect
 from qhull_2d import qhull2D
 
 
+def pull_points(points, grav_points, mass, g):
+    dists = cdist(points, grav_points) +1
+    force = g * mass / dists**2
+    diffs = grav_points[:, np.newaxis] - points[np.newaxis]
+    lengths = np.sqrt((diffs**2).sum(axis=2))
+    lengths[lengths == 0] = 1
+    diffs /= lengths[:, :, np.newaxis]
+    movements = (diffs * force.T[:, :, np.newaxis]).sum(axis=0)
+    return points + movements
+
+
+def make_grav_points(gap, xlim=(-2,2), ylim=(-2,2), grid=False):
+    lx = np.arange(xlim[0], xlim[1] + gap, gap)[:, np.newaxis]
+    ly = np.arange(ylim[0], ylim[1] + gap, gap)[:, np.newaxis]
+    
+    if grid:
+        xx, yy = np.meshgrid(lx, ly)
+        grid = np.concatenate([xx[:,:,np.newaxis], yy[:,:,np.newaxis]], axis=2).reshape(-1,2)
+        return grid
+    
+    else:
+        pt1 = np.hstack([lx, np.ones_like(lx)*ylim[0]])
+        pt2 = np.hstack([lx, np.ones_like(lx)*ylim[1]])
+        pt3 = np.hstack([np.ones_like(ly)*ylim[0], ly])[1:-1]
+        pt4 = np.hstack([np.ones_like(ly)*ylim[1], ly])[1:-1]
+        return np.vstack([pt1, pt2, pt3, pt4])
+
+
 def load_graph(path):
     n = None
     graph = {}
@@ -231,7 +259,24 @@ if __name__ == '__main__':
     data_trans_scaled[:,0] *= height / width
     data_trans_scaled = squeeze(data_trans_scaled, (xlim[0]+.5, xlim[1]-.5), (ylim[0]+.5, ylim[1]-.5))
     
-    plot_a_thing(data_trans_scaled, graph, inds, figname=path + '_' + mode + '.png', 
+    plot_a_thing(data_trans_scaled, graph, inds, figname=path + '_' + mode + '_pregrav.png', 
                  xlim=xlim, ylim=ylim, threshold=.5)
     
+    save_embedding(data_trans_scaled, path + '_' + mode + '_pregrav')
+    
+    # improving the embeddings with 'gravity'
+    
+    xlim_grav = (-2.,2.)
+    ylim_grav = xlim_grav
+    grav_points = make_grav_points(1, xlim_grav, ylim_grav, grid=False)
+
+    # 10 iterations, can be changed    
+    for i in xrange(10):
+        mass = cdist(grav_points, data_trans_scaled).min(axis=1)
+        data_trans_scaled = pull_points(data_trans_scaled, grav_points, mass, .5)
+        
+    plot_a_thing(squeeze(data_trans_scaled, xlim_grav, ylim_grav), graph, inds, 
+                 xlim=xlim, ylim=ylim, threshold=.5, figname=path + '_' + mode + '.png')
+    
     save_embedding(data_trans_scaled, path + '_' + mode)
+    
