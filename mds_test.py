@@ -115,7 +115,7 @@ def squeeze(data, xlim=(0,1), ylim=(0,1)):
 
 
 def make_index(graph):
-    temp = zip(xrange(len(graph.keys())), sorted(graph.keys()))
+    temp = zip(xrange(len(graph.keys())), sorted(graph.keys(), key=lambda x: map(int, x.split('_'))))
     return dict(temp), {v:k for (k,v) in temp}
 
 
