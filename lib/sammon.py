@@ -109,7 +109,7 @@ def sammon(x, n = 2, display = 2, inputdist = 'raw', maxhalves = 20, maxiter = 5
 
         # Use step-halving procedure to ensure progress is made
         for j in range(maxhalves):
-            s_reshape = s.reshape(2,len(s)/2).T
+            s_reshape = s.reshape(2, int(len(s) / 2)).T
             y = y_old + s_reshape
             d = euclid(y, y) + np.eye(N)
             dinv = 1 / d # Returns inf where D = 0. 

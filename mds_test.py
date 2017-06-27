@@ -13,8 +13,6 @@ from lib.sammon import sammon
 from lib.min_bounding_rect import minBoundingRect
 from lib.qhull_2d import qhull2D
 
-xrange = range
-
 
 def pull_points(points, grav_points, mass, g):
     dists = cdist(points, grav_points) +1
@@ -80,7 +78,7 @@ def reshape_graph(graph, sizes):
     n = len(sizes)
     new_graph = {}
     for v in graph:
-        for k in xrange(1, sizes[v] + 1):
+        for k in range(1, sizes[v] + 1):
             new_graph[vert(v,k)] = []
             
     done = set()
@@ -88,15 +86,15 @@ def reshape_graph(graph, sizes):
     for v in graph:
         for u in graph[v]:
             if (v, u) not in done:
-                v_ = vert(v, random.choice(xrange(1, sizes[v] + 1)))
-                u_ = vert(u, random.choice(xrange(1, sizes[u] + 1)))
+                v_ = vert(v, random.choice(range(1, sizes[v] + 1)))
+                u_ = vert(u, random.choice(range(1, sizes[u] + 1)))
                 new_graph[v_].append(u_)
                 new_graph[u_].append(v_)
                 done |= {(v, u), (u, v)}
     
     for v in graph:
         if sizes[v] > 1:
-            for k in xrange(1, sizes[v] + 1):
+            for k in range(1, sizes[v] + 1):
                 u1 = vert(v, k)
                 u2 = vert(v, (k % sizes[v]) + 1)
                 new_graph[u1].append(u2)
@@ -158,8 +156,8 @@ def dijksta(graph, weights, v1, v2):
 def calc_dists(graph, weights, idx):
     n = len(graph)
     dists = np.zeros((n, n))
-    for i in xrange(n):
-        for j in xrange(i + 1, n):
+    for i in range(n):
+        for j in range(i + 1, n):
             d = dijksta(graph, weights, idx[i], idx[j])
             dists[i,j] = d
     return dists + dists.T
@@ -174,7 +172,7 @@ def plot_a_thing(data_trans, graph, inds, figname=None, to_file=True,
     reds = 0
     plt.figure(figsize=(10,10))
     plt.scatter(data_trans[:,0], data_trans[:,1], linewidths=.2, s=10)
-    for i in xrange(data_trans.shape[0]):
+    for i in range(data_trans.shape[0]):
         plt.text(data_trans[i][0], data_trans[i][1], inds[0][i], color="red", fontsize=8)
         for k in graph[inds[0][i]]:
             j = inds[1][k]
@@ -192,7 +190,7 @@ def plot_a_thing(data_trans, graph, inds, figname=None, to_file=True,
     
     vert_mapping = list(enumerate(set((vert_id(v) for v in inds[1]))))
     real_ind = {v:k for (k,v) in vert_mapping}
-    means = [[] for i in xrange(len(real_ind))]
+    means = [[] for i in range(len(real_ind))]
     for v in inds[1]:
         means[real_ind[vert_id(v)]].append(data_trans[inds[1][v]])
     means = np.array([np.mean(l, axis=0) for l in means])
@@ -207,7 +205,7 @@ def plot_a_thing(data_trans, graph, inds, figname=None, to_file=True,
     plt.ylim(*ylim)
 
     i = 0
-    for simplex_idx in xrange(len(vor.ridge_vertices)):
+    for simplex_idx in range(len(vor.ridge_vertices)):
         simplex = np.asarray(vor.ridge_vertices[simplex_idx])
         if np.all(simplex >= 0):
             a, b = vor.ridge_points[simplex_idx]
@@ -216,7 +214,7 @@ def plot_a_thing(data_trans, graph, inds, figname=None, to_file=True,
         i += 1
 
     center = data_trans.mean(axis=0)
-    for pointidx, simplex_idx in zip(vor.ridge_points, xrange(len(vor.ridge_vertices))):
+    for pointidx, simplex_idx in zip(vor.ridge_points, range(len(vor.ridge_vertices))):
         simplex = np.asarray(vor.ridge_vertices[simplex_idx])
         a, b = vor.ridge_points[simplex_idx]
         if np.any(simplex < 0) and not same_vert(inds[0][a], inds[0][b]):
@@ -244,8 +242,8 @@ def plot_a_thing(data_trans, graph, inds, figname=None, to_file=True,
 
 
 def save_embedding(data_trans, idx, path):
-    with open(path + '.emb', 'w') as f:
-        for i in xrange(len(idx)):
+    with open(path + '.emb.txt', 'w') as f:
+        for i in range(len(idx)):
             x, y = data_trans[i]
             f.write(str(idx[i]) + ' ' + str(x) + ' ' + str(y) + '\n')
 
@@ -293,7 +291,7 @@ if __name__ == '__main__':
     grav_points = make_grav_points(1, xlim_grav, ylim_grav, grid=False)
 
     # 10 iterations, can be changed    
-    for i in xrange(10):
+    for i in range(10):
         mass = cdist(grav_points, data_trans_scaled).min(axis=1)
         data_trans_scaled = pull_points(data_trans_scaled, grav_points, mass, .5)
         
