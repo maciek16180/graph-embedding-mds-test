@@ -1,0 +1,11 @@
+10
+a 8 b
+b 12 a c d
+c 4 b e
+d 4 b e
+e 8 c d f
+f 8 e g h
+g 4 f i
+h 4 f i
+i 12 g h j1.]
+j1.] 8 i

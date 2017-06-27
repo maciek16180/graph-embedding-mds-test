@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
+import sys, random
 
 from sklearn.preprocessing import scale
 from sklearn.manifold import MDS
@@ -9,10 +9,9 @@ from heapq import heappop, heappush
 from scipy.spatial.distance import cdist
 from collections import defaultdict as dd
 
-sys.path.insert(0, './lib/')
-from sammon import sammon
-from min_bounding_rect import minBoundingRect
-from qhull_2d import qhull2D
+from lib.sammon import sammon
+from lib.min_bounding_rect import minBoundingRect
+from lib.qhull_2d import qhull2D
 
 
 def pull_points(points, grav_points, mass, g):
@@ -46,28 +45,30 @@ def make_grav_points(gap, xlim=(-2,2), ylim=(-2,2), grid=False):
 def load_graph(path):
     n = None
     graph = {}
-    sizes = []
+    sizes = {}
     with open(path, 'r') as f:
         it = 0
         for line in f:
-            nums = map(int, line.split())
+            l = line.split()
             if n is None:
-                n = nums[0]
+                n = int(l[0])
             else:
-                sizes.append(nums[0])
-                graph[it] = nums[1:]
+                Id = l[0]
+                sizes[Id] = int(l[1])
+                graph[Id] = l[2:]
             it += 1
         assert n + 1 == it
+        assert len(graph) == n
     return graph, sizes
 
 
 def same_vert(a,b):
-        return a.split('_')[0] == b.split('_')[0]
+    return a.split('_')[0] == b.split('_')[0]
     
-    
-def vert_numbers(a):
-    return map(int, a.split('_'))
-    
+
+def vert_id(a):
+    return a.split('_')[0]
+
     
 def reshape_graph(graph, sizes):
     
@@ -76,23 +77,26 @@ def reshape_graph(graph, sizes):
     
     n = len(sizes)
     new_graph = {}
-    for v in xrange(1, n+1):
-        for k in xrange(1, sizes[v-1]+1):
+    for v in graph:
+        for k in xrange(1, sizes[v] + 1):
             new_graph[vert(v,k)] = []
             
-    for v in xrange(1, n+1):
+    done = set()
+            
+    for v in graph:
         for u in graph[v]:
-            if u > v:
-                v_ = vert(v, np.random.choice(xrange(1, sizes[v-1]+1)))
-                u_ = vert(u, np.random.choice(xrange(1, sizes[u-1]+1)))
+            if (v, u) not in done:
+                v_ = vert(v, random.choice(xrange(1, sizes[v] + 1)))
+                u_ = vert(u, random.choice(xrange(1, sizes[u] + 1)))
                 new_graph[v_].append(u_)
                 new_graph[u_].append(v_)
-
+                done |= {(v, u), (u, v)}
     
-    for v in xrange(1, n+1):
-        if sizes[v-1] > 1:
-            for k in xrange(1, sizes[v-1]+1):
-                u1, u2 = vert(v,k), vert(v,(k % sizes[v-1])+1)
+    for v in graph:
+        if sizes[v] > 1:
+            for k in xrange(1, sizes[v] + 1):
+                u1 = vert(v, k)
+                u2 = vert(v, (k % sizes[v]) + 1)
                 new_graph[u1].append(u2)
                 new_graph[u2].append(u1)
             
@@ -115,24 +119,25 @@ def squeeze(data, xlim=(0,1), ylim=(0,1)):
 
 
 def make_index(graph):
-    temp = zip(xrange(len(graph.keys())), sorted(graph.keys(), key=lambda x: map(int, x.split('_'))))
+    temp = list(enumerate(sorted(graph.keys(), key=lambda x: tuple(x.split('_')))))
     return dict(temp), {v:k for (k,v) in temp}
 
 
 def calc_weights(graph, sizes):
     ws = {}
-    for v in graph.keys():
-        for u in graph.keys():
+    for v in graph:
+        for u in graph:
             if v != u:
                 ws[(u,v)] = len(set(graph[u]).union(graph[v])) - \
                 len(set(graph[u]).intersection(graph[v]))
-#                 un, vn = vert_numbers(u)[0], vert_numbers(v)[0]
-#                 ws[(u,v)] *= np.sqrt((sizes[un-1] + sizes[vn-1]) / 2)
+#                 uid, vid = vert_id(u), vert_id(v)
+#                 ws[(u,v)] *= np.sqrt((sizes[uid] + sizes[vid]) / 2)
     return ws
 
 
 def dijksta(graph, weights, v1, v2):
-    Q, seen = [(0, v1)], set()
+    Q = [(0, v1)]
+    seen = set()
     
     while Q:
         w, v = heappop(Q)
@@ -149,10 +154,10 @@ def dijksta(graph, weights, v1, v2):
 
 
 def calc_dists(graph, weights, idx):
-    n = len(graph.keys())
+    n = len(graph)
     dists = np.zeros((n, n))
     for i in xrange(n):
-        for j in xrange(i+1,n):
+        for j in xrange(i + 1, n):
             d = dijksta(graph, weights, idx[i], idx[j])
             dists[i,j] = d
     return dists + dists.T
@@ -181,6 +186,20 @@ def plot_a_thing(data_trans, graph, inds, figname=None, to_file=True,
                 else:
                     plt.plot((data_trans[i][0], data_trans[j][0]),
                              (data_trans[i][1], data_trans[j][1]), 'g-')
+    
+    
+    vert_mapping = list(enumerate(set((vert_id(v) for v in inds[1]))))
+    real_ind = {v:k for (k,v) in vert_mapping}
+    means = [[] for i in xrange(len(real_ind))]
+    for v in inds[1]:
+        means[real_ind[vert_id(v)]].append(data_trans[inds[1][v]])
+    means = np.array([np.mean(l, axis=0) for l in means])
+    
+    plt.scatter(means[:,0], means[:,1], linewidths=.2, s=30)
+    for v in real_ind:
+        i = real_ind[v]
+        plt.text(means[i,0], means[i,1], v, color="blue", fontsize=14)
+        
 
     plt.xlim(*xlim)
     plt.ylim(*ylim)
@@ -222,10 +241,11 @@ def plot_a_thing(data_trans, graph, inds, figname=None, to_file=True,
         plt.savefig(figname)
 
 
-def save_embedding(data_trans, path):
-    with open(path + '_emb', 'w') as f:
-        for x, y in data_trans:
-            f.write(str(x) + ' ' + str(y) + '\n')
+def save_embedding(data_trans, idx, path):
+    with open(path + '.emb', 'w') as f:
+        for i in xrange(len(idx)):
+            x, y = data_trans[i]
+            f.write(str(idx[i]) + ' ' + str(x) + ' ' + str(y) + '\n')
 
 
 if __name__ == '__main__':
@@ -256,13 +276,13 @@ if __name__ == '__main__':
     R = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
 
     data_trans_scaled = data_trans_scaled.dot(R)
-    data_trans_scaled[:,0] *= height / width
+    data_trans_scaled[:, 0] *= height / width
     data_trans_scaled = squeeze(data_trans_scaled, (xlim[0]+.5, xlim[1]-.5), (ylim[0]+.5, ylim[1]-.5))
     
     plot_a_thing(data_trans_scaled, graph, inds, figname=path + '_' + mode + '_pregrav.png', 
                  xlim=xlim, ylim=ylim, threshold=.5)
     
-    save_embedding(data_trans_scaled, path + '_' + mode + '_pregrav')
+    save_embedding(data_trans_scaled, inds[0], path + '_' + mode + '_pregrav')
     
     # improving the embeddings with 'gravity'
     
@@ -278,5 +298,5 @@ if __name__ == '__main__':
     plot_a_thing(squeeze(data_trans_scaled, xlim_grav, ylim_grav), graph, inds, 
                  xlim=xlim, ylim=ylim, threshold=.5, figname=path + '_' + mode + '.png')
     
-    save_embedding(data_trans_scaled, path + '_' + mode)
+    save_embedding(data_trans_scaled, inds[0], path + '_' + mode)
     
