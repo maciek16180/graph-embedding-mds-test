@@ -13,6 +13,8 @@ from lib.sammon import sammon
 from lib.min_bounding_rect import minBoundingRect
 from lib.qhull_2d import qhull2D
 
+xrange = range
+
 
 def pull_points(points, grav_points, mass, g):
     dists = cdist(points, grav_points) +1
