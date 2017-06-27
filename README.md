@@ -6,9 +6,7 @@ Run `python mds_test.py path_to_graph mode`.
 
 Example: `python mds_test.py graphs/g1 sammon`.
 
-Graph should be represented by a text file. First line contains one integer `n` (number of vertices), 
-`(i+1)`th line contains size and neighbors of a vertex `i`. First integer in a line represents size, the rest are neighbors. Vertices are numered from `1` to `n`. 
-Examples are in the `graphs` folder. DO NOT put a new line at the end of the file, it will be interpreted as a vertex with no neighbors.
+Graph should be represented by a text file. First line contains one integer (number of vertices). The rest of the lines have the following structure: first string (until the first whitespace) in a line is the ID of the node, after that there is an integer representing size, the rest is a list of node's neighbors (represented by their IDs). Examples are in the `graphs` folder. DO NOT put a new line at the end of the file, it will be interpreted as a vertex with no neighbors.
 
 Script produces a text file with vertex embeddings and a plot, both are saved in `path_to_graph` directory. Dotted lines represent Voronoi borders. 
 "Bad edges" is the number of edges in the graph that cross an area they don't belong to. It shows incorrect number for graphs with different node sizes at the moment, so ignore it for now.
