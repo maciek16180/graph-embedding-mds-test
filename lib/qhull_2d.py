@@ -47,5 +47,5 @@ def qhull2D(sample):
         base = take(sample, [argmin(axis), argmax(axis)], 0)
         return link(dome(sample, base), dome(sample, base[::-1]))
     else:
-    return sample
+        return sample
 
