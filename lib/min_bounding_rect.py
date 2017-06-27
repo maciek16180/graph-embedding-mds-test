@@ -42,6 +42,8 @@
 from numpy import *
 import sys  # maxint
 
+maxint = 1000000000
+
 def minBoundingRect(hull_points_2d):
     #print "Input convex hull points: "
     #print hull_points_2d
@@ -70,7 +72,7 @@ def minBoundingRect(hull_points_2d):
     #print "Unique edge angles: \n", edge_angles
 
     # Test each angle to find bounding box with smallest area
-    min_bbox = (0, sys.maxint, 0, 0, 0, 0, 0, 0) # rot_angle, area, width, height, min_x, max_x, min_y, max_y
+    min_bbox = (0, maxint, 0, 0, 0, 0, 0, 0) # rot_angle, area, width, height, min_x, max_x, min_y, max_y
     #print "Testing", len(edge_angles), "possible rotations for bounding box... \n"
     for i in range( len(edge_angles) ):
 
