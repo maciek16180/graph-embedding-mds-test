@@ -241,17 +241,25 @@ def plot_a_thing(data_trans, graph, inds, figname=None, to_file=True,
         plt.savefig(figname)
 
 
-def save_embedding(data_trans, idx, path):
-    with open(path + '.emb.txt', 'w') as f:
+def save_embedding(data_trans, idx, fname):
+    if not fname.endswith('.txt'):
+        fname += '.txt'
+    with open(fname, 'w') as f:
+        f.write(str(len(idx)) + '\n')
         for i in range(len(idx)):
             x, y = data_trans[i]
-            f.write(str(idx[i]) + ' ' + str(x) + ' ' + str(y) + '\n')
+            f.write(str(vert_id(idx[i])) + ' ' + str(x) + ' ' + str(y) + ' 1 0\n')
 
 
 if __name__ == '__main__':
+    
     path = sys.argv[1]
-    mode = sys.argv[2] if len(sys.argv) > 2 else 'sammon'
-    assert mode in ['sammon', 'mds']
+    if len(sys.argv) > 2:
+        output_fname = sys.argv[2]
+    else:
+        output_fname = path + '_emb'
+        
+    mode = 'sammon'
     
     graph, sizes = load_graph(path)
     graph = reshape_graph(graph, sizes)
@@ -279,10 +287,10 @@ if __name__ == '__main__':
     data_trans_scaled[:, 0] *= height / width
     data_trans_scaled = squeeze(data_trans_scaled, (xlim[0]+.5, xlim[1]-.5), (ylim[0]+.5, ylim[1]-.5))
     
-    plot_a_thing(data_trans_scaled, graph, inds, figname=path + '_' + mode + '_pregrav.png', 
+    plot_a_thing(data_trans_scaled, graph, inds, figname=output_fname + '_pregrav.png', 
                  xlim=xlim, ylim=ylim, threshold=.5)
     
-    save_embedding(data_trans_scaled, inds[0], path + '_' + mode + '_pregrav')
+    save_embedding(data_trans_scaled, inds[0], output_fname + '_pregrav')
     
     # improving the embeddings with 'gravity'
     
@@ -296,7 +304,7 @@ if __name__ == '__main__':
         data_trans_scaled = pull_points(data_trans_scaled, grav_points, mass, .5)
         
     plot_a_thing(squeeze(data_trans_scaled, xlim_grav, ylim_grav), graph, inds, 
-                 xlim=xlim, ylim=ylim, threshold=.5, figname=path + '_' + mode + '.png')
+                 xlim=xlim, ylim=ylim, threshold=.5, figname=output_fname + '.png')
     
-    save_embedding(data_trans_scaled, inds[0], path + '_' + mode)
+    save_embedding(data_trans_scaled, inds[0], output_fname)
     

@@ -1,10 +1,8 @@
 # Usage
 
-Run `python mds_test.py path_to_graph mode`.
+Run `python embed_graph.py path_to_graph mode`.
 
-`mode` if optional, should be `mds` or `sammon`. Default is `sammon`.
-
-Example: `python mds_test.py graphs/g1 sammon`.
+Example: `python embed_graph.py graphs/g1`.
 
 Graph should be represented by a text file. First line contains one integer `n` (number of vertices), 
 `(i+1)`th line contains size and neighbors of a vertex `i`. First integer in a line represents size, the rest are neighbors. Vertices are numered from `1` to `n`. 
